@@ -21,7 +21,7 @@ A custom [Model Context Protocol (MCP)](https://github.com/anthropics/model-cont
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/yourusername/perplexity-mcp.git
+   git clone https://github.com/Family-IT-Guy/perplexity-mcp.git
    cd perplexity-mcp
    ```
 
@@ -139,10 +139,6 @@ This implementation uses the Model Context Protocol (MCP) created by Anthropic t
 2. Registers Perplexity tools with Claude
 3. Proxies requests from Claude to the Perplexity API
 4. Returns responses back to Claude for display
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 

@@ -20,7 +20,7 @@ Remove unnecessary files:
    git init
    git add .
    git commit -m "Initial commit"
-   git remote add origin https://github.com/yourusername/perplexity-mcp.git
+   git remote add origin https://github.com/Family-IT-Guy/perplexity-mcp.git
    git push -u origin main
    ```
 

@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Perplexity Research for Claude Desktop - Setup</title>
+  <style>
+    :root {
+      --primary: #6366f1;
+      --primary-dark: #4f46e5;
+      --bg: #0f172a;
+      --card: #1e293b;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: #334155;
+      --success: #22c55e;
+      --warning: #f59e0b;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 2rem;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      margin-bottom: 2rem;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .step-number {
+      background: var(--primary);
+      color: white;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 0.875rem;
+    }
+
+    .step-title {
+      font-weight: 600;
+      font-size: 1.1rem;
+    }
+
+    .step-content {
+      margin-left: 2.5rem;
+    }
+
+    a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    .btn {
+      display: inline-block;
+      background: var(--primary);
+      color: white;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      font-weight: 500;
+      border: none;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background 0.2s;
+    }
+
+    .btn:hover {
+      background: var(--primary-dark);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      background: var(--border);
+    }
+
+    input[type="text"], input[type="password"] {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .code-block {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+      font-size: 0.875rem;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .path {
+      font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+      background: var(--bg);
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.875rem;
+    }
+
+    .success-message {
+      background: rgba(34, 197, 94, 0.1);
+      border: 1px solid var(--success);
+      color: var(--success);
+      padding: 1rem;
+      border-radius: 8px;
+      margin-top: 1rem;
+      display: none;
+    }
+
+    .warning {
+      background: rgba(245, 158, 11, 0.1);
+      border: 1px solid var(--warning);
+      color: var(--warning);
+      padding: 1rem;
+      border-radius: 8px;
+      margin-top: 1rem;
+    }
+
+    ol {
+      margin-left: 1.5rem;
+      margin-bottom: 1rem;
+    }
+
+    li {
+      margin-bottom: 0.5rem;
+    }
+
+    .preview {
+      margin-top: 1rem;
+    }
+
+    .preview-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .copy-btn {
+      font-size: 0.75rem;
+      padding: 0.5rem 1rem;
+    }
+
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .feature {
+      padding: 1rem;
+      background: var(--bg);
+      border-radius: 8px;
+    }
+
+    .feature-title {
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+
+    .feature-desc {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>Perplexity Research for Claude Desktop</h1>
+  <p class="subtitle">Intelligent web research with automatic knowledge logging</p>
+
+  <div class="card">
+    <div class="features">
+      <div class="feature">
+        <div class="feature-title">Smart Model Selection</div>
+        <div class="feature-desc">Auto-picks the right Perplexity model for your query</div>
+      </div>
+      <div class="feature">
+        <div class="feature-title">Research History</div>
+        <div class="feature-desc">Saves all research to ~/Documents/Perplexity Research/</div>
+      </div>
+      <div class="feature">
+        <div class="feature-title">Multi-Model Synthesis</div>
+        <div class="feature-desc">Combines multiple models for comprehensive research</div>
+      </div>
+      <div class="feature">
+        <div class="feature-title">Built-in Citations</div>
+        <div class="feature-desc">Every response includes sources and references</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="border-color: var(--text-muted);">
+    <div class="step-content" style="margin-left: 0;">
+      <p><strong>Prerequisite:</strong> You need <a href="https://nodejs.org/" target="_blank">Node.js</a> installed. Check with: <code>node --version</code> in Terminal.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="step-header">
+      <div class="step-number">1</div>
+      <div class="step-title">Get a Perplexity API Key</div>
+    </div>
+    <div class="step-content">
+      <ol>
+        <li>Go to <a href="https://www.perplexity.ai/settings/api" target="_blank">perplexity.ai/settings/api</a></li>
+        <li>Sign in or create an account</li>
+        <li>Click "Generate API Key"</li>
+        <li>Copy the key (starts with <code>pplx-</code>)</li>
+      </ol>
+      <p class="warning">
+        <strong>Note:</strong> Perplexity API has usage costs. Check their <a href="https://www.perplexity.ai/pricing" target="_blank">pricing page</a> for details. Typical research queries cost a few cents each.
+      </p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="step-header">
+      <div class="step-number">2</div>
+      <div class="step-title">Enter Your API Key</div>
+    </div>
+    <div class="step-content">
+      <input type="password" id="apiKey" placeholder="pplx-xxxxxxxxxxxxxxxxxxxx" autocomplete="off">
+      <button class="btn" onclick="generateConfig()">Generate Config</button>
+
+      <div class="preview" id="preview" style="display: none;">
+        <div class="preview-header">
+          <strong>Your Claude Desktop Config:</strong>
+          <button class="btn btn-secondary copy-btn" onclick="copyConfig()">Copy</button>
+        </div>
+        <div class="code-block" id="configOutput"></div>
+        <div class="success-message" id="copySuccess">Copied to clipboard!</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="step-header">
+      <div class="step-number">3</div>
+      <div class="step-title">Add to Claude Desktop</div>
+    </div>
+    <div class="step-content">
+      <ol>
+        <li>Open Finder</li>
+        <li>Press <kbd>Cmd</kbd> + <kbd>Shift</kbd> + <kbd>G</kbd></li>
+        <li>Paste: <span class="path">~/Library/Application Support/Claude/</span></li>
+        <li>Open or create <code>claude_desktop_config.json</code></li>
+        <li>Paste the config from Step 2</li>
+        <li>Save the file</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="step-header">
+      <div class="step-number">4</div>
+      <div class="step-title">Restart Claude Desktop</div>
+    </div>
+    <div class="step-content">
+      <p>Quit Claude Desktop completely (<kbd>Cmd</kbd> + <kbd>Q</kbd>) and reopen it.</p>
+      <p style="margin-top: 0.5rem;">You should now see the Perplexity tools available when you ask Claude to research something!</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="step-header">
+      <div class="step-number">5</div>
+      <div class="step-title">Try It Out</div>
+    </div>
+    <div class="step-content">
+      <p>Ask Claude something like:</p>
+      <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+        <li>"Research the current state of AI in healthcare"</li>
+        <li>"What are the best practices for React performance in 2025?"</li>
+        <li>"Do a deep research on renewable energy trends"</li>
+      </ul>
+      <p style="margin-top: 1rem; color: var(--text-muted);">Your research will be saved to <span class="path">~/Documents/Perplexity Research/</span></p>
+    </div>
+  </div>
+
+  <script>
+    function generateConfig() {
+      const apiKey = document.getElementById('apiKey').value.trim();
+
+      if (!apiKey) {
+        alert('Please enter your Perplexity API key');
+        return;
+      }
+
+      if (!apiKey.startsWith('pplx-')) {
+        alert('API key should start with "pplx-". Please check your key.');
+        return;
+      }
+
+      const config = {
+        mcpServers: {
+          "perplexity-research": {
+            command: "npx",
+            args: ["-y", "@familyitguy/perplexity-mcp"],
+            env: {
+              PERPLEXITY_API_KEY: apiKey
+            }
+          }
+        }
+      };
+
+      const configStr = JSON.stringify(config, null, 2);
+      document.getElementById('configOutput').textContent = configStr;
+      document.getElementById('preview').style.display = 'block';
+    }
+
+    function copyConfig() {
+      const configText = document.getElementById('configOutput').textContent;
+      navigator.clipboard.writeText(configText).then(() => {
+        const successMsg = document.getElementById('copySuccess');
+        successMsg.style.display = 'block';
+        setTimeout(() => {
+          successMsg.style.display = 'none';
+        }, 2000);
+      });
+    }
+
+    // Toggle password visibility on click
+    document.getElementById('apiKey').addEventListener('click', function() {
+      if (this.type === 'password') {
+        this.type = 'text';
+      }
+    });
+
+    document.getElementById('apiKey').addEventListener('blur', function() {
+      if (this.value) {
+        this.type = 'password';
+      }
+    });
+  </script>
+</body>
+</html>

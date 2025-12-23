@@ -1,21 +1,47 @@
 {
-  "name": "perplexity-mcp",
+  "name": "@familyitguy/perplexity-mcp",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "type": "module",
+  "description": "Intelligent Perplexity research MCP server with model selection, multi-model synthesis, and research history",
+  "main": "dist/index.js",
   "bin": {
-    "perplexity-mcp": "./server.js"
+    "perplexity-mcp": "./dist/index.js"
   },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "prepublishOnly": "npm run build"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "mcp",
+    "perplexity",
+    "research",
+    "claude",
+    "claude-desktop",
+    "model-context-protocol"
+  ],
+  "author": "Family-IT-Guy",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Family-IT-Guy/perplexity-mcp"
+  },
+  "homepage": "https://github.com/Family-IT-Guy/perplexity-mcp#readme",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.7.0",
-    "dotenv": "^16.4.7",
-    "isomorphic-fetch": "^3.0.0"
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "ts-node": "^10.9.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

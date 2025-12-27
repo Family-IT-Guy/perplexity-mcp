@@ -86,7 +86,9 @@ For follow-up queries within established scope, use brief checkpoint:
 - Note any conflicts between sources
 - Distinguish verified facts from inferences
 
-Results automatically saved to ~/Documents/Perplexity Research/`,
+Results saved with raw JSON backup:
+- Thread file: ~/Documents/Perplexity Research/[topic].md
+- Raw response: ~/Documents/Perplexity Research/raw/[timestamp]_[topic].json`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -167,7 +169,9 @@ Results will include:
 - Confidence assessment
 - Combined citations
 
-Results automatically saved to ~/Documents/Perplexity Research/`,
+Results saved with raw JSON backup:
+- Thread file: ~/Documents/Perplexity Research/[topic].md
+- Raw response: ~/Documents/Perplexity Research/raw/[timestamp]_[topic].json`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -193,7 +197,7 @@ Results automatically saved to ~/Documents/Perplexity Research/`,
     description: `Search past research for existing findings.
 
 CALL THIS BEFORE making new queries to avoid duplicate work and build on prior findings.
-Searches across all saved research in ~/Documents/Perplexity Research/`,
+Searches across all thread files in ~/Documents/Perplexity Research/ (excludes raw/ directory).`,
     inputSchema: {
       type: 'object',
       properties: {

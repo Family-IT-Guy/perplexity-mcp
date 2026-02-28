@@ -1,13 +1,14 @@
 import { PerplexityClient } from './perplexity.js';
-import { SynthesisResult } from './types.js';
+import { SearchOptions, SynthesisResult } from './types.js';
 export type SynthesisPattern = 'fact-reasoning' | 'quick-deep' | 'truthtracer' | 'multi-perspective';
 export declare class SynthesisEngine {
     private client;
     constructor(client: PerplexityClient);
     /**
      * Run multi-model synthesis based on pattern
+     * Passes search options through to each model call for consistent parameters
      */
-    synthesize(query: string, pattern: SynthesisPattern, systemPrompt?: string): Promise<SynthesisResult>;
+    synthesize(query: string, pattern: SynthesisPattern, options?: SearchOptions): Promise<SynthesisResult>;
     /**
      * Get model sequence for a pattern
      */

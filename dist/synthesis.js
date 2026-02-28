@@ -15,17 +15,14 @@ class SynthesisEngine {
     }
     /**
      * Run multi-model synthesis based on pattern
+     * Passes search options through to each model call for consistent parameters
      */
-    async synthesize(query, pattern, systemPrompt) {
+    async synthesize(query, pattern, options = {}) {
         const models = this.getModelsForPattern(pattern);
         const results = [];
-        // Execute models sequentially
+        // Execute models sequentially, passing search options to each call
         for (const model of models) {
-            const response = await this.client.search(query, model, {
-                messages: systemPrompt
-                    ? [{ role: 'system', content: systemPrompt }]
-                    : undefined,
-            });
+            const response = await this.client.search(query, model, options);
             // Strip thinking blocks from reasoning models
             const rawContent = response.choices[0]?.message?.content || '';
             const content = stripThinkingBlocks(rawContent);

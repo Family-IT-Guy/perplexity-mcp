@@ -11,7 +11,7 @@ import {
 import { PerplexityClient, SYSTEM_PROMPTS } from './perplexity.js';
 import { ResearchStore } from './research-store.js';
 import { SynthesisEngine, recommendPattern } from './synthesis.js';
-import { PerplexityModel, SynthesisResult } from './types.js';
+import { PerplexityModel, SearchOptions, SynthesisResult } from './types.js';
 
 // Initialize components
 let client: PerplexityClient;
@@ -115,14 +115,36 @@ Results saved with raw JSON backup:
           enum: ['day', 'week', 'month', 'year'],
           description: 'Filter results by recency. Optional.',
         },
+        search_context_size: {
+          type: 'string',
+          enum: ['low', 'medium', 'high'],
+          description: 'Web search context breadth. "high" gives the model more source material for better quality. Default: "high". Cost: $6/$10/$14 per 1K requests for low/med/high.',
+        },
+        search_mode: {
+          type: 'string',
+          enum: ['web', 'academic', 'sec'],
+          description: 'Search mode. Auto-detected if omitted: studies/papers → academic, companies/filings → sec, else web.',
+        },
         domain_filter: {
           type: 'array',
           items: { type: 'string' },
-          description: 'Filter results by domain (max 10). Prefix with - to exclude. Examples: ["docs.python.org", "github.com"] or ["-reddit.com", "-quora.com"]',
+          description: 'Filter results by domain (max 20). Prefix with - to exclude. Examples: ["docs.python.org", "github.com"] or ["-reddit.com", "-quora.com"]',
+        },
+        return_images: {
+          type: 'boolean',
+          description: 'Include images in results. Auto-detected if omitted: true for visual/product topics, false otherwise.',
         },
         return_related_questions: {
           type: 'boolean',
           description: 'Include suggested follow-up questions in response. Default: false',
+        },
+        search_after_date: {
+          type: 'string',
+          description: 'Only include results published after this date. Format: MM/DD/YYYY',
+        },
+        search_before_date: {
+          type: 'string',
+          description: 'Only include results published before this date. Format: MM/DD/YYYY',
         },
       },
       required: ['query'],
@@ -188,6 +210,33 @@ Results saved with raw JSON backup:
           enum: ['fact-reasoning', 'quick-deep', 'truthtracer', 'multi-perspective'],
           description: 'Synthesis pattern. If not specified, auto-selects based on query.',
         },
+        search_context_size: {
+          type: 'string',
+          enum: ['low', 'medium', 'high'],
+          description: 'Web search context breadth. Default: "high".',
+        },
+        search_mode: {
+          type: 'string',
+          enum: ['web', 'academic', 'sec'],
+          description: 'Search mode. Auto-detected if omitted.',
+        },
+        return_images: {
+          type: 'boolean',
+          description: 'Include images in results. Auto-detected if omitted.',
+        },
+        search_after_date: {
+          type: 'string',
+          description: 'Only results after this date. Format: MM/DD/YYYY',
+        },
+        search_before_date: {
+          type: 'string',
+          description: 'Only results before this date. Format: MM/DD/YYYY',
+        },
+        domain_filter: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Filter results by domain (max 20). Prefix with - to exclude.',
+        },
       },
       required: ['query'],
     },
@@ -236,6 +285,94 @@ Use after list_research_threads to read specific research.`,
     },
   },
   {
+    name: 'async_deep_research',
+    description: `Submit a long-running deep research query asynchronously.
+
+Use this for exhaustive research that may take 60-120+ seconds. Returns a task ID immediately.
+Follow up with check_async_research to poll for results.
+
+**MANDATORY WORKFLOW:**
+1. Present research plan and get user approval first
+2. Submit with this tool (returns task ID)
+3. Poll with check_async_research until COMPLETED
+4. Results are automatically saved when complete
+
+Always uses sonar-deep-research model with high reasoning effort.`,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'string',
+          description: 'The research question requiring exhaustive investigation',
+        },
+        approved_plan: {
+          type: 'string',
+          description: 'The research plan approved by the user. Required for audit trail.',
+        },
+        context: {
+          type: 'string',
+          enum: ['general', 'technical', 'academic', 'factCheck', 'business', 'rca'],
+          description: 'Context for system prompt selection. Default: general',
+        },
+        search_context_size: {
+          type: 'string',
+          enum: ['low', 'medium', 'high'],
+          description: 'Web search context breadth. Default: "high".',
+        },
+        search_mode: {
+          type: 'string',
+          enum: ['web', 'academic', 'sec'],
+          description: 'Search mode. Auto-detected if omitted.',
+        },
+        reasoning_effort: {
+          type: 'string',
+          enum: ['low', 'medium', 'high'],
+          description: 'Reasoning thoroughness. Default: "high".',
+        },
+        search_after_date: {
+          type: 'string',
+          description: 'Only results after this date. Format: MM/DD/YYYY',
+        },
+        search_before_date: {
+          type: 'string',
+          description: 'Only results before this date. Format: MM/DD/YYYY',
+        },
+        domain_filter: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Filter results by domain (max 20). Prefix with - to exclude.',
+        },
+      },
+      required: ['query'],
+    },
+  },
+  {
+    name: 'check_async_research',
+    description: `Check the status of an async deep research task.
+
+Poll this tool after submitting with async_deep_research.
+Status progression: CREATED → IN_PROGRESS → COMPLETED (or FAILED).
+When COMPLETED, results are automatically saved to the research directory.`,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        task_id: {
+          type: 'string',
+          description: 'The task ID returned by async_deep_research',
+        },
+        query: {
+          type: 'string',
+          description: 'The original query (needed for saving results when complete)',
+        },
+        approved_plan: {
+          type: 'string',
+          description: 'The original approved plan (needed for saving results when complete)',
+        },
+      },
+      required: ['task_id'],
+    },
+  },
+  {
     name: 'list_models',
     description: `Show available Perplexity models and when to use each.
 
@@ -279,6 +416,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const recency = args?.recency as 'day' | 'week' | 'month' | 'year' | undefined;
         const domainFilter = args?.domain_filter as string[] | undefined;
         const returnRelatedQuestions = args?.return_related_questions as boolean | undefined;
+        const searchContextSize = args?.search_context_size as 'low' | 'medium' | 'high' | undefined;
+        const searchMode = args?.search_mode as 'web' | 'academic' | 'sec' | undefined;
+        const returnImages = args?.return_images as boolean | undefined;
+        const searchAfterDate = args?.search_after_date as string | undefined;
+        const searchBeforeDate = args?.search_before_date as string | undefined;
 
         // Force sonar-reasoning-pro for RCA context
         if (context === 'rca' && !model) {
@@ -297,19 +439,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           modelRationale = 'user-specified';
         }
 
-        // Build search options
-        const searchOptions: Record<string, unknown> = {
-          messages: [{ role: 'system', content: SYSTEM_PROMPTS[context] }],
+        // Build search options with auto-detection
+        const searchOptions: SearchOptions = {
+          systemPrompt: SYSTEM_PROMPTS[context],
+          searchContextSize: searchContextSize || 'high',
+          searchMode: searchMode || client.searchModeForQuery(query),
+          returnImages: returnImages !== undefined ? returnImages : client.shouldReturnImages(query),
+          returnRelatedQuestions: returnRelatedQuestions || false,
         };
-        if (recency) {
-          searchOptions.search_recency_filter = recency;
-        }
-        if (domainFilter && domainFilter.length > 0) {
-          searchOptions.search_domain_filter = domainFilter;
-        }
-        if (returnRelatedQuestions) {
-          searchOptions.return_related_questions = true;
-        }
+        if (recency) searchOptions.recency = recency;
+        if (domainFilter?.length) searchOptions.domainFilter = domainFilter;
+        if (searchAfterDate) searchOptions.searchAfterDate = searchAfterDate;
+        if (searchBeforeDate) searchOptions.searchBeforeDate = searchBeforeDate;
 
         // Execute search with error handling
         let response;
@@ -367,6 +508,12 @@ What would you like to do?`,
         const query = args?.query as string;
         const approvedPlan = args?.approved_plan as string | undefined;
         let pattern = args?.pattern as Parameters<typeof synthesizer.synthesize>[1] | undefined;
+        const drSearchContextSize = args?.search_context_size as 'low' | 'medium' | 'high' | undefined;
+        const drSearchMode = args?.search_mode as 'web' | 'academic' | 'sec' | undefined;
+        const drReturnImages = args?.return_images as boolean | undefined;
+        const drSearchAfterDate = args?.search_after_date as string | undefined;
+        const drSearchBeforeDate = args?.search_before_date as string | undefined;
+        const drDomainFilter = args?.domain_filter as string[] | undefined;
 
         // Auto-select pattern if not specified
         let patternRationale: string;
@@ -377,10 +524,20 @@ What would you like to do?`,
           patternRationale = `user-specified ${pattern} pattern`;
         }
 
+        // Build search options for synthesis (passed to each model call)
+        const drSearchOptions: SearchOptions = {
+          searchContextSize: drSearchContextSize || 'high',
+          searchMode: drSearchMode || client.searchModeForQuery(query),
+          returnImages: drReturnImages !== undefined ? drReturnImages : client.shouldReturnImages(query),
+        };
+        if (drSearchAfterDate) drSearchOptions.searchAfterDate = drSearchAfterDate;
+        if (drSearchBeforeDate) drSearchOptions.searchBeforeDate = drSearchBeforeDate;
+        if (drDomainFilter?.length) drSearchOptions.domainFilter = drDomainFilter;
+
         // Execute synthesis with error handling
         let result;
         try {
-          result = await synthesizer.synthesize(query, pattern);
+          result = await synthesizer.synthesize(query, pattern, drSearchOptions);
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);
 
@@ -510,39 +667,179 @@ What would you like to do?`,
         };
       }
 
+      case 'async_deep_research': {
+        const asyncQuery = args?.query as string;
+        const asyncApprovedPlan = args?.approved_plan as string | undefined;
+        const asyncContext = (args?.context as keyof typeof SYSTEM_PROMPTS) || 'general';
+        const asyncSearchContextSize = args?.search_context_size as 'low' | 'medium' | 'high' | undefined;
+        const asyncSearchMode = args?.search_mode as 'web' | 'academic' | 'sec' | undefined;
+        const asyncReasoningEffort = args?.reasoning_effort as 'low' | 'medium' | 'high' | undefined;
+        const asyncSearchAfterDate = args?.search_after_date as string | undefined;
+        const asyncSearchBeforeDate = args?.search_before_date as string | undefined;
+        const asyncDomainFilter = args?.domain_filter as string[] | undefined;
+
+        const asyncSearchOptions: SearchOptions = {
+          systemPrompt: SYSTEM_PROMPTS[asyncContext],
+          searchContextSize: asyncSearchContextSize || 'high',
+          searchMode: asyncSearchMode || client.searchModeForQuery(asyncQuery),
+          reasoningEffort: asyncReasoningEffort || 'high',
+        };
+        if (asyncSearchAfterDate) asyncSearchOptions.searchAfterDate = asyncSearchAfterDate;
+        if (asyncSearchBeforeDate) asyncSearchOptions.searchBeforeDate = asyncSearchBeforeDate;
+        if (asyncDomainFilter?.length) asyncSearchOptions.domainFilter = asyncDomainFilter;
+
+        try {
+          const taskId = await client.submitAsyncResearch(asyncQuery, asyncSearchOptions);
+
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `**Async deep research submitted.**
+
+**Task ID**: \`${taskId}\`
+**Status**: CREATED
+**Query**: ${asyncQuery}
+${asyncApprovedPlan ? `**Plan**: Approved and logged` : ''}
+
+Use \`check_async_research\` with this task ID to poll for results.
+Deep research typically takes 60-120 seconds.`,
+              },
+            ],
+          };
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `**Async deep research failed to submit**: ${errorMessage}
+
+**Options:**
+1. **Retry** submission
+2. **Use sync deep_research** instead (blocks until complete)
+3. **Abort**
+
+What would you like to do?`,
+              },
+            ],
+            isError: true,
+          };
+        }
+      }
+
+      case 'check_async_research': {
+        const taskId = args?.task_id as string;
+        const checkQuery = args?.query as string | undefined;
+        const checkApprovedPlan = args?.approved_plan as string | undefined;
+
+        try {
+          const result = await client.checkAsyncResearch(taskId);
+
+          if (result.status === 'COMPLETED' && result.response) {
+            // Save results
+            let filePath: string | undefined;
+            if (checkQuery) {
+              filePath = await store.saveResearch(
+                checkQuery,
+                result.response,
+                'sonar-deep-research',
+                undefined,
+                'async deep research',
+                checkApprovedPlan
+              );
+            }
+
+            const formatted = client.formatResponseWithCitations(result.response);
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `**Async research complete.**\n\n${formatted}${filePath ? `\n\n---\n*Saved to: ${filePath}*` : ''}`,
+                },
+              ],
+            };
+          }
+
+          if (result.status === 'FAILED') {
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `**Async research FAILED.**\n\nTask ID: \`${taskId}\`\nError: ${result.error_message || 'Unknown error'}\n\n**Options:**\n1. **Retry** with async_deep_research\n2. **Use sync** deep_research instead\n3. **Abort**`,
+                },
+              ],
+              isError: true,
+            };
+          }
+
+          // Still in progress
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `**Status**: ${result.status}\n**Task ID**: \`${taskId}\`\n\nStill processing. Poll again in 10-15 seconds.`,
+              },
+            ],
+          };
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `**Error checking async research**: ${errorMessage}`,
+              },
+            ],
+            isError: true,
+          };
+        }
+      }
+
       case 'list_models': {
-        const modelGuide = `## Perplexity Sonar Models
+        const modelGuide = `## Perplexity Sonar Models — Selection Guide
 
-### sonar
-**Best for**: Simple factual lookups, current events, definitions
-- "What is the current Bitcoin price?"
-- "Who won the game last night?"
-- "What is quantum entanglement?"
+**Binary decision:**
 
-### sonar-pro
-**Best for**: Multi-source research, fact-checking, technical docs
-- "Compare React vs Vue for enterprise apps"
-- "What are the key findings from recent climate reports?"
-- 2x more citations than sonar
-
-### sonar-reasoning-pro (DEFAULT)
-**Best for**: Why/how questions, complex analysis, debugging, trade-offs
-- "Why did the 2008 financial crisis happen?"
-- "Evaluate microservices vs monolith for a small team"
-- Shows reasoning process for transparency
-
-### sonar-deep-research
-**Best for**: Exhaustive research, reports, due diligence
-- "Comprehensive analysis of the EV market through 2030"
-- Runs ~30 searches, processes hundreds of sources
-- 128K token context
+| Question | Model |
+|----------|-------|
+| Is this exhaustive, report-style research? | sonar-deep-research |
+| Everything else | sonar-reasoning-pro |
 
 ---
 
-**Selection guidance**:
-- Default to sonar-reasoning-pro unless query is trivially simple
-- Use sonar-deep-research for comprehensive reports
-- For critical decisions, use deep_research with multi-model synthesis`;
+### sonar-reasoning-pro (DEFAULT)
+**Best for**: Analysis, reasoning, debugging, comparisons, most queries
+- Shows reasoning process (think traces) for transparency
+- Mandatory for RCA/debugging (causal reasoning required)
+- $2/1M input, $8/1M output, + search context cost
+
+### sonar-deep-research
+**Best for**: Exhaustive research, comprehensive reports, due diligence
+- Runs ~30 searches, processes hundreds of sources
+- 128K token context
+- Use async_deep_research for queries that may take >60 seconds
+- $2/1M input, $8/1M output, + reasoning/citation/search costs
+
+### sonar-pro
+**Best for**: Multi-source research when reasoning traces aren't needed
+- 2x more citations than sonar
+- Good for fact-checking and technical docs
+
+### sonar
+**Best for**: Simple factual lookups, current events, definitions
+- Fastest and cheapest
+- Limited depth
+
+---
+
+**Search context size**: All tools default to \`"high"\` for maximum source material.
+Cost: $6/$10/$14 per 1K requests for low/medium/high.
+
+**Search modes**: Auto-detected per query:
+- \`web\` — default for most queries
+- \`academic\` — studies, papers, scientific claims
+- \`sec\` — companies, filings, financial data`;
 
         return {
           content: [{ type: 'text', text: modelGuide }],

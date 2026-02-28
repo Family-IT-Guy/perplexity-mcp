@@ -2,6 +2,7 @@ import { PerplexityClient, SYSTEM_PROMPTS } from './perplexity.js';
 import {
   PerplexityModel,
   PerplexityResponse,
+  SearchOptions,
   SynthesisResult,
 } from './types.js';
 
@@ -34,22 +35,19 @@ export class SynthesisEngine {
 
   /**
    * Run multi-model synthesis based on pattern
+   * Passes search options through to each model call for consistent parameters
    */
   async synthesize(
     query: string,
     pattern: SynthesisPattern,
-    systemPrompt?: string
+    options: SearchOptions = {}
   ): Promise<SynthesisResult> {
     const models = this.getModelsForPattern(pattern);
     const results: ModelResult[] = [];
 
-    // Execute models sequentially
+    // Execute models sequentially, passing search options to each call
     for (const model of models) {
-      const response = await this.client.search(query, model, {
-        messages: systemPrompt
-          ? [{ role: 'system', content: systemPrompt }]
-          : undefined,
-      });
+      const response = await this.client.search(query, model, options);
 
       // Strip thinking blocks from reasoning models
       const rawContent = response.choices[0]?.message?.content || '';

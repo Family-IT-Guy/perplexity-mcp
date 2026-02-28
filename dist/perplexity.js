@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PerplexityAPIError = exports.PerplexityClient = exports.SYSTEM_PROMPTS = void 0;
 const API_ENDPOINT = 'https://api.perplexity.ai/chat/completions';
+const ASYNC_API_ENDPOINT = 'https://api.perplexity.ai/async/chat/completions';
 // System prompts for different contexts
 exports.SYSTEM_PROMPTS = {
     general: 'You are a research assistant. Provide comprehensive, well-cited answers. Be thorough but concise.',
@@ -29,22 +30,53 @@ class PerplexityClient {
         }
     }
     async search(query, model = 'sonar-reasoning-pro', options = {}) {
-        const systemPrompt = options.messages?.[0]?.role === 'system'
-            ? options.messages[0].content
-            : exports.SYSTEM_PROMPTS.general;
-        // Build request - don't spread options.messages to avoid overwriting
-        const { messages: _ignoredMessages, ...restOptions } = options;
+        const systemPrompt = options.systemPrompt || exports.SYSTEM_PROMPTS.general;
+        // Build request with proper web_search_options nesting
+        // CRITICAL: search_context_size MUST be inside web_search_options, not top-level
         const request = {
             model,
             messages: [
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: query },
             ],
-            max_tokens: restOptions.max_tokens || 4000,
-            temperature: restOptions.temperature ?? 0.2,
-            return_citations: restOptions.return_citations ?? true,
-            ...restOptions,
+            web_search_options: {
+                search_context_size: options.searchContextSize || 'high',
+            },
+            temperature: 0.2,
+            return_citations: true,
+            stream: false,
         };
+        // Search mode (web/academic/sec)
+        if (options.searchMode) {
+            request.search_mode = options.searchMode;
+        }
+        // Date filters
+        if (options.searchAfterDate) {
+            request.search_after_date_filter = options.searchAfterDate;
+        }
+        if (options.searchBeforeDate) {
+            request.search_before_date_filter = options.searchBeforeDate;
+        }
+        // Domain filter
+        if (options.domainFilter && options.domainFilter.length > 0) {
+            request.search_domain_filter = options.domainFilter;
+        }
+        // Recency filter
+        if (options.recency) {
+            request.search_recency_filter = options.recency;
+        }
+        // Images
+        if (options.returnImages !== undefined) {
+            request.return_images = options.returnImages;
+        }
+        // Related questions
+        if (options.returnRelatedQuestions) {
+            request.return_related_questions = true;
+        }
+        // Reasoning effort (deep research)
+        if (options.reasoningEffort) {
+            request.reasoning_effort = options.reasoningEffort;
+        }
         let response;
         try {
             response = await fetch(API_ENDPOINT, {
@@ -63,6 +95,83 @@ class PerplexityClient {
         if (!response.ok) {
             const errorText = await response.text();
             throw new PerplexityAPIError(response.status, `Perplexity API error (${response.status}): ${errorText}`);
+        }
+        return response.json();
+    }
+    /**
+     * Submit async deep research request (for long-running queries)
+     * Returns a task ID for polling
+     */
+    async submitAsyncResearch(query, options = {}) {
+        const systemPrompt = options.systemPrompt || exports.SYSTEM_PROMPTS.general;
+        const innerRequest = {
+            model: 'sonar-deep-research',
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: query },
+            ],
+            web_search_options: {
+                search_context_size: options.searchContextSize || 'high',
+            },
+            reasoning_effort: options.reasoningEffort || 'high',
+            temperature: 0.2,
+            stream: false,
+            return_citations: true,
+        };
+        if (options.searchMode)
+            innerRequest.search_mode = options.searchMode;
+        if (options.searchAfterDate)
+            innerRequest.search_after_date_filter = options.searchAfterDate;
+        if (options.searchBeforeDate)
+            innerRequest.search_before_date_filter = options.searchBeforeDate;
+        if (options.domainFilter?.length)
+            innerRequest.search_domain_filter = options.domainFilter;
+        if (options.returnRelatedQuestions)
+            innerRequest.return_related_questions = true;
+        if (options.returnImages !== undefined)
+            innerRequest.return_images = options.returnImages;
+        let response;
+        try {
+            response = await fetch(ASYNC_API_ENDPOINT, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.apiKey}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ request: innerRequest }),
+            });
+        }
+        catch (fetchError) {
+            const errorMsg = fetchError instanceof Error ? fetchError.message : String(fetchError);
+            throw new Error(`Network error submitting async research: ${errorMsg}`);
+        }
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new PerplexityAPIError(response.status, `Perplexity async API error (${response.status}): ${errorText}`);
+        }
+        const result = await response.json();
+        return result.id;
+    }
+    /**
+     * Poll async research task for results
+     */
+    async checkAsyncResearch(taskId) {
+        let response;
+        try {
+            response = await fetch(`${ASYNC_API_ENDPOINT}/${taskId}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${this.apiKey}`,
+                },
+            });
+        }
+        catch (fetchError) {
+            const errorMsg = fetchError instanceof Error ? fetchError.message : String(fetchError);
+            throw new Error(`Network error checking async research: ${errorMsg}`);
+        }
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new PerplexityAPIError(response.status, `Perplexity async poll error (${response.status}): ${errorText}`);
         }
         return response.json();
     }
@@ -122,21 +231,70 @@ class PerplexityClient {
         };
     }
     /**
+     * Auto-detect search_mode from query content
+     * Matches skill logic: studies/papers → academic, companies/filings → sec, else web
+     */
+    searchModeForQuery(query) {
+        const q = query.toLowerCase();
+        if (q.includes('studies') || q.includes('papers') || q.includes('peer-reviewed') ||
+            q.includes('peer reviewed') || q.includes('scientific') || q.includes('journal') ||
+            q.includes('research paper') || q.includes('meta-analysis') || q.includes('clinical trial')) {
+            return 'academic';
+        }
+        if (q.includes('companies') || q.includes('filings') || q.includes('earnings') ||
+            q.includes('sec ') || q.includes('financial') || q.includes('10-k') ||
+            q.includes('10-q') || q.includes('annual report') || q.includes('investor')) {
+            return 'sec';
+        }
+        return 'web';
+    }
+    /**
+     * Auto-detect whether to return images from query content
+     * Matches skill logic: visual topics → true, else false
+     */
+    shouldReturnImages(query) {
+        const q = query.toLowerCase();
+        return (q.includes('product') || q.includes('visual') || q.includes('design') ||
+            q.includes('photo') || q.includes('place') || q.includes('image') ||
+            q.includes('screenshot') || q.includes('diagram') || q.includes('infographic'));
+    }
+    /**
      * Format response content with citations
+     * Uses search_results (rich) when available, falls back to citations (URLs only)
      */
     formatResponseWithCitations(response) {
         let content = response.choices[0]?.message?.content || '';
+        const searchResults = response.search_results || [];
         const citations = response.citations || [];
         const relatedQuestions = response.related_questions || [];
         const usage = response.usage;
         // Strip <think>...</think> blocks from reasoning models
         content = content.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
         let formatted = content;
-        if (citations.length > 0) {
+        // Prefer search_results (title + URL + date) over bare citation URLs
+        if (searchResults.length > 0) {
+            formatted += '\n\n---\n\n## Sources\n\n';
+            searchResults.forEach((result, index) => {
+                try {
+                    const domain = new URL(result.url).hostname.replace(/^www\./, '');
+                    formatted += `[${index + 1}] ${result.title || domain} - ${domain}\n`;
+                    formatted += `    ${result.url}`;
+                    if (result.date)
+                        formatted += ` | Published: ${result.date}`;
+                    if (result.last_updated)
+                        formatted += ` | Updated: ${result.last_updated}`;
+                    formatted += '\n';
+                }
+                catch {
+                    formatted += `[${index + 1}] ${result.title || result.url}\n    ${result.url}\n`;
+                }
+            });
+        }
+        else if (citations.length > 0) {
             formatted += '\n\n---\n\n## Sources\n\n';
             citations.forEach((url, index) => {
                 try {
-                    const domain = new URL(url).hostname;
+                    const domain = new URL(url).hostname.replace(/^www\./, '');
                     formatted += `[${index + 1}] ${domain}\n    ${url}\n`;
                 }
                 catch {
@@ -150,10 +308,16 @@ class PerplexityClient {
                 formatted += `${index + 1}. ${question}\n`;
             });
         }
-        formatted += `\n---\n\n*Model: ${response.model} | Tokens: ${usage.total_tokens}*`;
-        if (usage.num_search_queries) {
-            formatted += ` | *Searches: ${usage.num_search_queries}*`;
-        }
+        // Cost from API response or token count
+        const costStr = usage.cost?.total_cost !== undefined
+            ? `$${usage.cost.total_cost.toFixed(4)}`
+            : undefined;
+        formatted += `\n---\n\n*Model: ${response.model} | Tokens: ${usage.total_tokens}`;
+        if (costStr)
+            formatted += ` | Cost: ${costStr}`;
+        if (usage.num_search_queries)
+            formatted += ` | Searches: ${usage.num_search_queries}`;
+        formatted += '*';
         return formatted;
     }
 }

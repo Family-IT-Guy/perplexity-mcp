@@ -9,20 +9,53 @@ export interface PerplexityRequest {
     max_tokens?: number;
     temperature?: number;
     top_p?: number;
+    web_search_options?: {
+        search_context_size?: 'low' | 'medium' | 'high';
+    };
+    search_mode?: 'web' | 'academic' | 'sec';
     search_domain_filter?: string[];
     search_recency_filter?: 'day' | 'week' | 'month' | 'year';
+    search_after_date_filter?: string;
+    search_before_date_filter?: string;
     return_citations?: boolean;
     return_images?: boolean;
     return_related_questions?: boolean;
+    reasoning_effort?: 'low' | 'medium' | 'high';
     stream?: boolean;
+}
+export interface PerplexityCost {
+    input_tokens_cost: number;
+    output_tokens_cost: number;
+    request_cost: number;
+    total_cost: number;
+    reasoning_tokens_cost?: number;
+    citation_tokens_cost?: number;
+    search_queries_cost?: number;
 }
 export interface PerplexityUsage {
     prompt_tokens: number;
     completion_tokens: number;
     total_tokens: number;
+    search_context_size?: string;
+    cost?: PerplexityCost;
     citation_tokens?: number;
     num_search_queries?: number;
     reasoning_tokens?: number;
+}
+export interface PerplexitySearchResult {
+    title: string;
+    url: string;
+    date?: string;
+    last_updated?: string;
+    snippet?: string;
+    source?: string;
+}
+export interface PerplexityImage {
+    image_url: string;
+    origin_url?: string;
+    height?: number;
+    width?: number;
+    title?: string;
 }
 export interface PerplexityResponse {
     id: string;
@@ -37,6 +70,8 @@ export interface PerplexityResponse {
         finish_reason: string;
     }>;
     citations?: string[];
+    search_results?: PerplexitySearchResult[];
+    images?: PerplexityImage[];
     related_questions?: string[];
     usage: PerplexityUsage;
 }
@@ -57,6 +92,18 @@ export interface ResearchEntry {
     response: string;
     citations: string[];
     usage: PerplexityUsage;
+}
+export interface SearchOptions {
+    systemPrompt?: string;
+    searchContextSize?: 'low' | 'medium' | 'high';
+    searchMode?: 'web' | 'academic' | 'sec';
+    searchAfterDate?: string;
+    searchBeforeDate?: string;
+    domainFilter?: string[];
+    recency?: 'day' | 'week' | 'month' | 'year';
+    returnImages?: boolean;
+    returnRelatedQuestions?: boolean;
+    reasoningEffort?: 'low' | 'medium' | 'high';
 }
 export interface ModelRecommendation {
     model: PerplexityModel;

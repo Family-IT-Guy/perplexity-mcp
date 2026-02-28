@@ -4,6 +4,7 @@ import * as os from 'os';
 import {
   PerplexityModel,
   PerplexityResponse,
+  PerplexitySearchResult,
   ResearchThread,
   ResearchEntry,
 } from './types.js';
@@ -15,11 +16,10 @@ const DEFAULT_RESEARCH_DIR = path.join(
   'Perplexity Research'
 );
 
-// Pricing per 1M tokens (as of Dec 2024)
+// Fallback pricing per 1M tokens (used only when API doesn't return cost)
 const MODEL_PRICING: Record<string, { input: number; output: number }> = {
   'sonar': { input: 1.0, output: 1.0 },
   'sonar-pro': { input: 3.0, output: 15.0 },
-  'sonar-reasoning': { input: 1.0, output: 5.0 },
   'sonar-reasoning-pro': { input: 2.0, output: 8.0 },
   'sonar-deep-research': { input: 2.0, output: 8.0 },
 };
@@ -78,7 +78,26 @@ function extractDomain(url: string): string {
 }
 
 /**
- * Format citations with domain extraction
+ * Format search_results with title, URL, dates (rich format matching skill output)
+ */
+function formatSearchResults(results: PerplexitySearchResult[]): string {
+  if (!results || results.length === 0) {
+    return '*No sources provided*';
+  }
+
+  return results
+    .map((result, i) => {
+      const domain = extractDomain(result.url);
+      let line = `[${i + 1}] ${result.title || domain} - ${domain}\n    ${result.url}`;
+      if (result.date) line += ` | Published: ${result.date}`;
+      if (result.last_updated) line += ` | Updated: ${result.last_updated}`;
+      return line;
+    })
+    .join('\n\n');
+}
+
+/**
+ * Format citations with domain extraction (fallback when search_results not available)
  */
 function formatCitations(citations: string[]): string {
   if (!citations || citations.length === 0) {
@@ -218,10 +237,14 @@ export class ResearchStore {
     const timestamp = formatDualTimestamp();
     const rawContent = response.choices[0]?.message?.content || '';
     const content = stripThinkingBlocks(rawContent);
+    const searchResults = response.search_results || [];
     const citations = response.citations || [];
     const relatedQuestions = response.related_questions || [];
     const usage = response.usage;
-    const cost = calculateCost(model, usage.prompt_tokens, usage.completion_tokens);
+    // Use API-returned cost when available, fall back to local calculation
+    const cost = usage.cost?.total_cost !== undefined
+      ? `$${usage.cost.total_cost.toFixed(4)}`
+      : calculateCost(model, usage.prompt_tokens, usage.completion_tokens);
 
     // Determine query number for multi-query format
     const queryNum = this.countQueriesInThread(filePath) + 1;
@@ -247,9 +270,9 @@ ${approvedPlan}
 
 ${content}
 
-### Citations
+### Sources
 
-${formatCitations(citations)}
+${searchResults.length > 0 ? formatSearchResults(searchResults) : formatCitations(citations)}
 `;
 
     if (relatedQuestions.length > 0) {
